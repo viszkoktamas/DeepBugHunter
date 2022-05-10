@@ -1,29 +1,32 @@
+import os
+import shutil
 import copy
 import datetime
 import numpy as np
-from pathlib import Path
 
 import strategies
 from sklearn.metrics import confusion_matrix
 
 
 def mkdir(dir_name, clean=False):
-    p = Path(dir_name)
     if clean:
-
         # Clear the TF cache to avoid open file handlers blocking
         # https://github.com/tensorflow/tensorflow/issues/9571
         from tensorflow.python.summary.writer import writer_cache
         writer_cache.FileWriterCache.clear()
 
         try:
-            p.rmdir()
-        except Exception as e:
+            if os.path.exists(dir_name):
+                shutil.rmtree(dir_name)
+
+        except OSError as e:
             print('Could not remove dir: ' + dir_name)
-            pass
+            raise
+
     try:
-        p.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
+        os.makedirs(dir_name)
+
+    except OSError as e:
         print('Could not create dir: ' + dir_name)
 
 
@@ -44,6 +47,7 @@ def sklearn_eval(classifier, data, threshold=None):
     preds = classifier.predict(data[0])
     if threshold is not None:
         preds = [1 if x >= threshold else 0 for x in preds]
+
     return conf_matrix_convert(confusion_matrix(data[1], preds))
 
 
@@ -58,6 +62,7 @@ def sklearn_wrapper(train, dev, test, alg, threshold=None):
 def _numpy_to_pytype(obj):
     if isinstance(obj, np.generic):
         return np.asscalar(obj)
+
     else:
         return obj
 
@@ -68,8 +73,10 @@ def create_doc(args, strategy, sargs_str, train_stats, dev_stats, test_stats, fe
     if hasattr(getattr(strategies, strategy), 'parser'):
         parser = getattr(strategies, strategy).parser
         sargs = parse(parser, sargs_str.split())
+
     else:
         sargs = {}
+
     all_args_str = " ".join(["--" + arg + " " + str(val) for arg, val in sargs.items()])
     sargs['cmd_line'] = all_args_str
     doc_json = {
