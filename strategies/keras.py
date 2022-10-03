@@ -5,9 +5,11 @@ from keras import backend as K
 import tensorflow as tf
 import argparse
 import dbh_util as util
+from tensorflow import keras
+from pathlib import Path
 
 CLASSES = 2
-
+OUTDIR = 'keras_models'
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--layers', type=int, help='Number of layers')
@@ -61,9 +63,20 @@ def create_model(sargs, input_dim):
 
 def learn(train, dev, test, args, sargs_str):
     sargs = util.parse(parser, sargs_str.split())
+    model_id = "_".join(f"{k}-{v}" for k, v in sargs.items())
+    model_path = model_id + f"_{args['fold_i']}.h5"
+    save_path = Path(OUTDIR) / model_path
 
-    model = create_model(sargs, len(train[0].keys()))
+    if save_path.exists():
+        model = keras.models.load_model(save_path, custom_objects={"custom_f1": custom_f1})
+
+    else:
+        model = create_model(sargs, len(train[0].keys()))
+
     model.fit(train[0], train[1], epochs=sargs["epochs"], batch_size=sargs["batch"])
+
+    model.save(save_path)
+
     model.add(Lambda(lambda x: K.cast(K.argmax(x), dtype='float32'), name='y_pred'))
 
     train_res = util.sklearn_eval(model, train)
