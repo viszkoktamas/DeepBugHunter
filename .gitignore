@@ -1,4 +1,6 @@
 __pycache__/
 sandbox/
 output/
+pickles/
 .idea/
+*.csv

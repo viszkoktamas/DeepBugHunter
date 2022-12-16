@@ -122,7 +122,10 @@ class ConfMatrix:
             precision = tp / (tp + fp + EPS)
             recall = tp / (tp + fn + EPS)
             fmes = (2 * precision * recall) / (precision + recall + EPS)
-            mcc = (tp * tn - fp * fn) / (math.sqrt((tp + fp)*(tp + fn)*(tn + fp)*(tn + fn)) + EPS)
+            try:
+                mcc = (tp * tn - fp * fn) / (math.sqrt((tp + fp)*(tp + fn)*(tn + fp)*(tn + fn)) + EPS)
+            except:
+                mcc = 0
             data_frame.append([tp, tn, fp, fn, accuracy, precision, recall, fmes, mcc])
             if compl:
                 c_issues = issue_result[0]
@@ -277,6 +280,8 @@ def main(args):
     with open(os.path.join(args['output'], 'dbh.csv'), 'a') as f:
         for line in table:
             f.write(';'.join([str(item) for item in line]) + '\n')
+
+    return table
     
 if __name__ == '__main__':
     main(util.parse(parser, sys.argv[1:]))

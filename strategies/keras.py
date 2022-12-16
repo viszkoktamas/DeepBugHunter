@@ -18,6 +18,7 @@ parser.add_argument('--batch', type=int, help='Batch size')
 parser.add_argument('--epochs', type=int, help='Epoch count')
 parser.add_argument('--lr', type=float, help='Starting learning rate')
 parser.add_argument('--beta', type=float, default=0.0, help='L2 regularization bias')
+parser.add_argument('--pretrain', type=str, default=None, help='pretrain config')
 
 
 def custom_f1(y_true, y_pred):
@@ -63,7 +64,7 @@ def create_model(sargs, input_dim):
 
 def learn(train, dev, test, args, sargs_str):
     sargs = util.parse(parser, sargs_str.split())
-    model_id = "_".join(f"{k}-{v}" for k, v in sargs.items())
+    model_id = "_".join(f"{k}-{v}" for k, v in sargs.items() if v is not None)
     model_path = model_id + f"_{args['fold_i']}.h5"
     save_path = Path(OUTDIR) / model_path
 
@@ -71,11 +72,18 @@ def learn(train, dev, test, args, sargs_str):
         model = keras.models.load_model(save_path, custom_objects={"custom_f1": custom_f1})
 
     else:
-        model = create_model(sargs, len(train[0].keys()))
+        if not Path(OUTDIR).exists():
+            util.mkdir(Path(OUTDIR), clean=True)
 
-    model.fit(train[0], train[1], epochs=sargs["epochs"], batch_size=sargs["batch"])
+        if sargs["pretrain"] and (Path(OUTDIR) / (sargs["pretrain"] + f"_{args['fold_i']}.h5")).exists():
+            pretrain_model_path = Path(OUTDIR) / (sargs["pretrain"] + f"_{args['fold_i']}.h5")
+            model = keras.models.load_model(pretrain_model_path, custom_objects={"custom_f1": custom_f1})
 
-    model.save(save_path)
+        else:
+            model = create_model(sargs, len(train[0].keys()))
+
+        model.fit(train[0], train[1], epochs=sargs["epochs"], batch_size=sargs["batch"])
+        model.save(save_path)
 
     model.add(Lambda(lambda x: K.cast(K.argmax(x), dtype='float32'), name='y_pred'))
 
