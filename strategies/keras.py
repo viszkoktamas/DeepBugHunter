@@ -19,6 +19,7 @@ parser.add_argument('--epochs', type=int, help='Epoch count')
 parser.add_argument('--lr', type=float, help='Starting learning rate')
 parser.add_argument('--beta', type=float, default=0.0, help='L2 regularization bias')
 parser.add_argument('--pretrain', type=str, default=None, help='pretrain config')
+parser.add_argument('--save', action='store_true', help='save trained model')
 
 
 def custom_f1(y_true, y_pred):
@@ -58,14 +59,18 @@ def create_model(sargs, input_dim):
         model.add(Dense(1024, activation='relu', kernel_regularizer=reg))
 
     model.add(Dense(CLASSES, activation='softmax', kernel_regularizer=reg))
-    model.compile(loss='sparse_categorical_crossentropy', optimizer=adam_v2.Adam(learning_rate=sargs["lr"]), metrics=['acc', custom_f1])
+    model.compile(
+        loss='sparse_categorical_crossentropy',
+        optimizer=adam_v2.Adam(learning_rate=sargs["lr"]),
+        metrics=['acc', custom_f1]
+    )
     return model
 
 
 def learn(train, dev, test, args, sargs_str):
     sargs = util.parse(parser, sargs_str.split())
     model_id = "_".join(f"{k}-{v}" for k, v in sargs.items() if v is not None)
-    model_path = model_id + f"_{args['fold_i']}.h5"
+    model_path = model_id + f"_{args['resample']}_{args['resample_amount']}_{args['seed']}_{args['csv'][:-4]}_{args['fold_i']}.h5"
     save_path = Path(OUTDIR) / model_path
 
     if save_path.exists():
@@ -83,7 +88,8 @@ def learn(train, dev, test, args, sargs_str):
             model = create_model(sargs, len(train[0].keys()))
 
         model.fit(train[0], train[1], epochs=sargs["epochs"], batch_size=sargs["batch"])
-        model.save(save_path)
+        if sargs["save"]:
+            model.save(save_path)
 
     model.add(Lambda(lambda x: K.cast(K.argmax(x), dtype='float32'), name='y_pred'))
 
