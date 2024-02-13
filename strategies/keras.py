@@ -56,7 +56,7 @@ def create_model(sargs, input_dim):
     model.add(Dense(sargs["neurons"], input_dim=input_dim, activation='relu', kernel_regularizer=reg))
 
     for _ in range(1, sargs['layers']):
-        model.add(Dense(1024, activation='relu', kernel_regularizer=reg))
+        model.add(Dense(sargs["neurons"], activation='relu', kernel_regularizer=reg))
 
     model.add(Dense(CLASSES, activation='softmax', kernel_regularizer=reg))
     model.compile(
@@ -83,6 +83,7 @@ def learn(train, dev, test, args, sargs_str):
         if sargs["pretrain"] and (Path(OUTDIR) / (sargs["pretrain"] + f"_{args['fold_i']}.h5")).exists():
             pretrain_model_path = Path(OUTDIR) / (sargs["pretrain"] + f"_{args['fold_i']}.h5")
             model = keras.models.load_model(pretrain_model_path, custom_objects={"custom_f1": custom_f1})
+            K.set_value(model.optimizer.lr, sargs["lr"])
 
         else:
             model = create_model(sargs, len(train[0].keys()))
